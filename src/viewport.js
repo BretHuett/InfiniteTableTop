@@ -114,6 +114,7 @@ export class Viewport {
       const leftOnEmpty =
         e.button === 0 &&
         this.allowLeftPan &&
+        !e.shiftKey && // Shift+drag is reserved for rubber-band selection
         (e.target === this.canvas || e.target === this.world);
       if (!middle && !leftOnEmpty) return;
       if (middle) e.preventDefault();

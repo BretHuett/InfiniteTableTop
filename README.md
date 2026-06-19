@@ -20,6 +20,10 @@ paper in front of you.
   get crisp text instead of a blurry blow-up.
 - **Multi-page support** — flip through a document's pages right on its sheet, or
   **explode** a document into one separate, movable sheet per page (⧉ button).
+- **Multi-select & groups** — hold **Shift** and drag a box around sheets, or
+  Shift-click them one by one. Then delete the lot together, or **group** them.
+  A group moves as one, shows a coloured ring, and can be **hidden** (it collapses
+  to a chip you click to bring back), **ungrouped**, or deleted.
 - **Drawing tools** — a pen, highlighter and eraser (left palette) let you annotate
   on top of and *between* the documents. Ink lives on the table, so it pans, zooms
   and stays put with everything else. Pick a colour and thickness, undo, or clear.
@@ -53,6 +57,10 @@ npm run preview    # serve the built bundle locally
 | Move a paper | Drag it |
 | Rotate a paper | Drag the ↻ handle (hold **Shift** to snap to 15°) |
 | Bring to front | Click the paper |
+| Select multiple | **Shift**-drag a box, or **Shift**-click each sheet |
+| Group / ungroup | **Ctrl/Cmd+G** / **Ctrl/Cmd+Shift+G**, or the selection bar |
+| Hide / show a group | **Hide** on the selection bar; click the group's chip to show |
+| Delete selected | **Delete**, or the selection bar |
 | Flip pages | `‹` / `›` on the paper's toolbar |
 | Explode into one sheet per page | ⧉ on the paper's toolbar |
 | Reset a paper's rotation | ⊙ on the paper's toolbar |

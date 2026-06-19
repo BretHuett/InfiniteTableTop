@@ -36,6 +36,7 @@ export class Paper {
     this.rotation = 0;
     this.baseW = 0;
     this.baseH = 0;
+    this.group = null; // Group this sheet belongs to, or null
     this.renderScale = Math.min(1.5 * DPR, MAX_RENDER);
     this._renderTask = null;
     this._page = null;
@@ -250,12 +251,21 @@ export class Paper {
     let lastX = 0;
     let lastY = 0;
     let active = false;
+    let moveSet = null; // every paper that moves with this one (selection ∪ groups)
 
     this.el.addEventListener("pointerdown", (e) => {
       if (e.target.closest(".paper-bar") || e.target.closest(".rotate-handle")) return;
       if (e.button !== 0) return;
-      this.app.bringToFront(this);
-      this.app.setActive(this);
+      if (this.app.mode !== "move") return; // drawing tools own the pointer
+
+      // Shift toggles selection membership without starting a drag.
+      if (e.shiftKey) {
+        this.app.toggleSelect(this);
+        e.stopPropagation();
+        return;
+      }
+
+      moveSet = this.app.beginDrag(this);
       active = true;
       lastX = e.clientX;
       lastY = e.clientY;
@@ -269,16 +279,21 @@ export class Paper {
     this.el.addEventListener("pointermove", (e) => {
       if (!active) return;
       const s = this.viewport.scale;
-      this.x += (e.clientX - lastX) / s;
-      this.y += (e.clientY - lastY) / s;
+      const dx = (e.clientX - lastX) / s;
+      const dy = (e.clientY - lastY) / s;
       lastX = e.clientX;
       lastY = e.clientY;
-      this._applyTransform();
+      for (const p of moveSet) {
+        p.x += dx;
+        p.y += dy;
+        p._applyTransform();
+      }
     });
 
     const end = (e) => {
       if (!active) return;
       active = false;
+      moveSet = null;
       this.el.classList.remove("dragging");
       try {
         this.el.releasePointerCapture(e.pointerId);
@@ -301,7 +316,7 @@ export class Paper {
       e.stopPropagation();
       if (e.button !== 0) return;
       this.app.bringToFront(this);
-      this.app.setActive(this);
+      if (!this.app.isSelected(this)) this.app.selectOnly(this);
       active = true;
       this.handleEl.setPointerCapture(e.pointerId);
     });

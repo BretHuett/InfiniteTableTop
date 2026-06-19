@@ -79,8 +79,13 @@ body.cam-panning .rotate-handle {
   cursor: grabbing;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.paper.active {
+.paper.grouped {
+  box-shadow: 0 0 0 3px var(--group-color, var(--accent)), 0 6px 22px var(--paper-shadow),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.paper.selected {
   outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 .paper canvas {
   display: block;
@@ -122,7 +127,7 @@ body.cam-panning .rotate-handle {
   transition: opacity 0.12s ease;
 }
 .paper:hover .paper-bar,
-.paper.active .paper-bar {
+.paper.selected .paper-bar {
   opacity: 1;
   pointer-events: auto;
 }
@@ -179,7 +184,7 @@ body.cam-panning .rotate-handle {
   transition: opacity 0.12s ease;
 }
 .paper:hover .rotate-handle,
-.paper.active .rotate-handle {
+.paper.selected .rotate-handle {
   opacity: 1;
 }
 .rotate-handle::before {
@@ -459,6 +464,105 @@ body.draw-mode.cam-panning .paper {
 .wbtn.active {
   background: #3a3e46;
   border-color: var(--accent);
+}
+
+/* ---------- Rubber-band selection ---------- */
+#select-box {
+  position: fixed;
+  display: none;
+  border: 1px solid var(--accent);
+  background: rgba(76, 141, 255, 0.12);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 1500;
+}
+
+/* ---------- Selection action bar ---------- */
+#selection-bar {
+  position: fixed;
+  bottom: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: rgba(37, 40, 46, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 1600;
+}
+#selection-bar.hidden {
+  display: none;
+}
+#sel-count {
+  font-size: 13px;
+  color: var(--text-dim);
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+#selection-bar .sb-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--panel-border);
+}
+#selection-bar button {
+  background: #2f333a;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#selection-bar button:hover {
+  background: #3a3e46;
+}
+#selection-bar button.danger {
+  color: #ff8a8a;
+}
+#selection-bar button.danger:hover {
+  background: #45272a;
+  border-color: #7a3a3a;
+}
+
+/* ---------- Hidden-group chip ---------- */
+.group-chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%) scale(var(--k, 1));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 999998;
+  color: var(--text);
+}
+.group-chip:hover {
+  background: #30343b;
+}
+.group-chip .gdot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--group-color, var(--accent));
+}
+.group-chip .gname {
+  font-size: 13px;
+}
+.group-chip .gshow {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* ---------- Progress bar ---------- */
