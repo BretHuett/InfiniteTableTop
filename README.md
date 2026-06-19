@@ -20,6 +20,11 @@ paper in front of you.
   get crisp text instead of a blurry blow-up.
 - **Multi-page support** — flip through a document's pages right on its sheet, or
   **explode** a document into one separate, movable sheet per page (⧉ button).
+- **Drawing tools** — a pen, highlighter and eraser (left palette) let you annotate
+  on top of and *between* the documents. Ink lives on the table, so it pans, zooms
+  and stays put with everything else. Pick a colour and thickness, undo, or clear.
+- **Loading progress** — opening a batch of files shows a progress bar with the
+  current filename and count, so large drawings don't feel like a hang.
 - **Tidy & Fit** — one click to re-grid everything, another to frame the whole table.
 
 ## Getting started
@@ -55,6 +60,10 @@ npm run preview    # serve the built bundle locally
 | Fit everything on screen | **Fit all** button, or `F` |
 | Re-arrange into a grid | **Tidy** button |
 | Reset zoom to 100% | **100%** button, or `0` |
+| Move / select tool | left palette, or `V` |
+| Pen / Highlighter / Eraser | left palette, or `P` / `H` / `E` |
+| Undo last stroke | `Ctrl`/`Cmd` + `Z`, or the ↶ button |
+| Clear all drawings | 🗑 button on the palette |
 
 ## How it works
 

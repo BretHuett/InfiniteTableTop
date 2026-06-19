@@ -37,10 +37,59 @@
       </div>
     </div>
 
+    <div id="draw-tools">
+      <button class="tool active" data-tool="move" title="Move &amp; select (V)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tool" data-tool="pen" title="Pen (P)">
+        <svg viewBox="0 0 24 24"><path d="M4 20l4-1L20 7l-3-3L7 16l-3 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tool" data-tool="highlighter" title="Highlighter (H)">
+        <svg viewBox="0 0 24 24"><path d="M5 20h7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M8 17l-2 0 6-9 3 2-7 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 8l3-4 4 3-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tool" data-tool="eraser" title="Eraser (E)">
+        <svg viewBox="0 0 24 24"><path d="M6 18l-3-3a2 2 0 010-3l7-7a2 2 0 013 0l4 4a2 2 0 010 3l-6 6H9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 21h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+
+      <div class="tsep"></div>
+
+      <div class="swatches">
+        <button class="swatch active" data-color="#111827" style="--c:#111827"></button>
+        <button class="swatch" data-color="#e23b3b" style="--c:#e23b3b"></button>
+        <button class="swatch" data-color="#2f7bf6" style="--c:#2f7bf6"></button>
+        <button class="swatch" data-color="#23a559" style="--c:#23a559"></button>
+        <button class="swatch" data-color="#f5a623" style="--c:#f5a623"></button>
+      </div>
+
+      <div class="widths">
+        <button class="wbtn" data-width="2"><span style="width:4px;height:4px"></span></button>
+        <button class="wbtn active" data-width="4"><span style="width:7px;height:7px"></span></button>
+        <button class="wbtn" data-width="9"><span style="width:12px;height:12px"></span></button>
+      </div>
+
+      <div class="tsep"></div>
+
+      <button class="tool" data-act="undo" title="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tool" data-act="clear" title="Clear all drawings">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="progress" class="hidden">
+      <div class="progress-row">
+        <span id="progress-label">Opening…</span>
+        <span id="progress-count"></span>
+      </div>
+      <div class="progress-track"><div id="progress-fill"></div></div>
+    </div>
+
     <div id="help">
       <strong>Drag empty space</strong> or <strong>middle-drag</strong> to pan ·
       <strong>Scroll</strong> to zoom · <strong>Drag a paper</strong> to move ·
-      grab the <strong>↻ handle</strong> to rotate
+      grab the <strong>↻ handle</strong> to rotate · pick a <strong>tool</strong> on the
+      left to draw (middle-drag still pans)
     </div>
 
     <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden />

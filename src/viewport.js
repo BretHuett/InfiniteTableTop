@@ -16,6 +16,7 @@ export class Viewport {
     this.scale = 1;
     this.panX = 0;
     this.panY = 0;
+    this.allowLeftPan = true; // disabled while a drawing tool is active
     this._listeners = new Set();
 
     this._initPan();
@@ -111,7 +112,9 @@ export class Viewport {
     this.canvas.addEventListener("pointerdown", (e) => {
       const middle = e.button === 1;
       const leftOnEmpty =
-        e.button === 0 && (e.target === this.canvas || e.target === this.world);
+        e.button === 0 &&
+        this.allowLeftPan &&
+        (e.target === this.canvas || e.target === this.world);
       if (!middle && !leftOnEmpty) return;
       if (middle) e.preventDefault();
 

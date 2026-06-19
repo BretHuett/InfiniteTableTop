@@ -2,6 +2,7 @@ import "./style.css";
 import { Viewport } from "./viewport.js";
 import { Paper } from "./paper.js";
 import { loadPdf } from "./pdf.js";
+import { DrawController } from "./draw.js";
 
 const GAP = 64; // world px between papers in a grid
 
@@ -10,8 +11,26 @@ const worldEl = document.getElementById("world");
 const fileInput = document.getElementById("file-input");
 const emptyState = document.getElementById("empty-state");
 const zoomReadout = document.getElementById("zoom-readout");
+const progressEl = document.getElementById("progress");
+const progressLabel = document.getElementById("progress-label");
+const progressCount = document.getElementById("progress-count");
+const progressFill = document.getElementById("progress-fill");
 
 const viewport = new Viewport(canvasEl, worldEl);
+const draw = new DrawController({ canvas: canvasEl, world: worldEl, viewport });
+
+// ---- opening progress bar ----
+function showProgress(label, count, frac) {
+  progressLabel.textContent = label;
+  progressCount.textContent = count;
+  progressFill.style.width = `${Math.round(frac * 100)}%`;
+  progressEl.classList.remove("hidden");
+}
+function hideProgress() {
+  progressEl.classList.add("hidden");
+}
+// Yield to the browser so the bar actually paints between heavy renders.
+const paintTick = () => new Promise((r) => requestAnimationFrame(() => r()));
 
 const app = {
   papers: [],
@@ -44,8 +63,16 @@ const app = {
     if (pdfs.length === 0) return;
     emptyState.classList.add("hidden");
 
+    const total = pdfs.length;
     const batch = [];
-    for (const file of pdfs) {
+    showProgress("Opening files…", `0 / ${total}`, 0);
+    await paintTick();
+
+    for (let i = 0; i < pdfs.length; i++) {
+      const file = pdfs[i];
+      showProgress(`Opening ${file.name}`, `${i + 1} / ${total}`, i / total);
+      await paintTick();
+
       // Loading the document is the real "is this a valid PDF?" gate.
       let doc;
       try {
@@ -69,7 +96,10 @@ const app = {
       paper.el.style.zIndex = String(++this.topZ);
       this.papers.push(paper);
       batch.push(paper);
+      showProgress(`Opening ${file.name}`, `${i + 1} / ${total}`, (i + 1) / total);
     }
+
+    hideProgress();
     if (batch.length === 0) {
       if (this.papers.length === 0) emptyState.classList.remove("hidden");
       return;
@@ -223,6 +253,36 @@ canvasEl.addEventListener("pointerdown", (e) => {
   if (e.target === canvasEl || e.target === worldEl) app.setActive(null);
 });
 
+// ---- drawing tools ----
+const toolBtns = document.querySelectorAll("#draw-tools .tool[data-tool]");
+const swatchBtns = document.querySelectorAll("#draw-tools .swatch");
+const widthBtns = document.querySelectorAll("#draw-tools .wbtn");
+
+function setMode(mode) {
+  draw.setMode(mode);
+  viewport.allowLeftPan = mode === "move"; // middle-drag always pans
+  document.body.classList.toggle("draw-mode", mode !== "move");
+  toolBtns.forEach((b) => b.classList.toggle("active", b.dataset.tool === mode));
+  if (mode !== "move") app.setActive(null);
+}
+
+toolBtns.forEach((btn) => btn.addEventListener("click", () => setMode(btn.dataset.tool)));
+swatchBtns.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    draw.color = btn.dataset.color;
+    swatchBtns.forEach((s) => s.classList.toggle("active", s === btn));
+    if (draw.mode !== "pen" && draw.mode !== "highlighter") setMode("pen");
+  })
+);
+widthBtns.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    draw.width = Number(btn.dataset.width);
+    widthBtns.forEach((s) => s.classList.toggle("active", s === btn));
+  })
+);
+document.querySelector('#draw-tools [data-act="undo"]').addEventListener("click", () => draw.undo());
+document.querySelector('#draw-tools [data-act="clear"]').addEventListener("click", () => draw.clear());
+
 // ---- drag & drop ----
 let dragDepth = 0;
 window.addEventListener("dragenter", (e) => {
@@ -245,7 +305,28 @@ window.addEventListener("drop", (e) => {
 // ---- keyboard shortcuts ----
 window.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT") return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+    draw.undo();
+    e.preventDefault();
+    return;
+  }
   switch (e.key) {
+    case "v":
+    case "V":
+      setMode("move");
+      break;
+    case "p":
+    case "P":
+      setMode("pen");
+      break;
+    case "h":
+    case "H":
+      setMode("highlighter");
+      break;
+    case "e":
+    case "E":
+      setMode("eraser");
+      break;
     case "f":
     case "F":
       app.fitAll();
@@ -262,6 +343,7 @@ window.addEventListener("keydown", (e) => {
       viewport.zoomBy(1 / 1.2);
       break;
     case "Escape":
+      setMode("move");
       app.setActive(null);
       break;
     case "Delete":
@@ -273,3 +355,5 @@ window.addEventListener("keydown", (e) => {
 
 // expose for debugging
 window.__tabletop = app;
+window.__draw = draw;
+window.__setMode = setMode;
