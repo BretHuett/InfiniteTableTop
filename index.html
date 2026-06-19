@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>InfiniteTableTop</title>
+  </head>
+  <body>
+    <div id="canvas">
+      <div id="world"></div>
+    </div>
+
+    <header id="toolbar">
+      <div class="brand">
+        <span class="logo">▦</span>
+        <span class="title">InfiniteTableTop</span>
+      </div>
+      <div class="tools">
+        <button id="open-btn" class="primary" title="Open one or more PDFs">＋ Open PDFs</button>
+        <span class="divider"></span>
+        <button id="tidy-btn" title="Re-arrange papers into a neat grid">⊞ Tidy</button>
+        <button id="fit-btn" title="Zoom to fit everything on screen (F)">⤢ Fit all</button>
+        <button id="reset-btn" title="Reset zoom to 100% (0)">100%</button>
+        <span class="divider"></span>
+        <span id="zoom-readout" title="Current zoom">100%</span>
+      </div>
+    </header>
+
+    <div id="empty-state">
+      <div class="empty-card">
+        <div class="empty-icon">▦</div>
+        <h1>InfiniteTableTop</h1>
+        <p>Spread your PDFs across an infinite table. Open several at once, then drag,
+           rotate, overlap and zoom into them like real paper.</p>
+        <button id="empty-open-btn" class="primary big">＋ Open PDFs</button>
+        <p class="drop-hint">…or just drag &amp; drop PDF files anywhere.</p>
+      </div>
+    </div>
+
+    <div id="help">
+      <strong>Drag empty space</strong> or <strong>middle-drag</strong> to pan ·
+      <strong>Scroll</strong> to zoom · <strong>Drag a paper</strong> to move ·
+      grab the <strong>↻ handle</strong> to rotate
+    </div>
+
+    <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden />
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
