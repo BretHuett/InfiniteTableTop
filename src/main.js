@@ -46,23 +46,34 @@ const app = {
 
     const batch = [];
     for (const file of pdfs) {
+      // Loading the document is the real "is this a valid PDF?" gate.
+      let doc;
       try {
-        const doc = await loadPdf(file);
-        const paper = new Paper(doc, file.name.replace(/\.pdf$/i, ""), {
-          world: worldEl,
-          viewport,
-          app,
-        });
-        await paper.init();
-        paper.el.style.zIndex = String(++this.topZ);
-        this.papers.push(paper);
-        batch.push(paper);
+        doc = await loadPdf(file);
       } catch (err) {
         console.error(`Could not open ${file.name}:`, err);
-        alert(`Could not open "${file.name}". It may not be a valid PDF.`);
+        alert(`Could not open "${file.name}".\n\n${err?.message || err}`);
+        continue;
       }
+      // From here the file is valid; a rendering hiccup must not throw it away.
+      const paper = new Paper(doc, file.name.replace(/\.pdf$/i, ""), {
+        world: worldEl,
+        viewport,
+        app,
+      });
+      try {
+        await paper.init();
+      } catch (err) {
+        console.error(`Problem rendering ${file.name}:`, err);
+      }
+      paper.el.style.zIndex = String(++this.topZ);
+      this.papers.push(paper);
+      batch.push(paper);
     }
-    if (batch.length === 0) return;
+    if (batch.length === 0) {
+      if (this.papers.length === 0) emptyState.classList.remove("hidden");
+      return;
+    }
 
     this._placeBatch(batch);
     batch.forEach((p) => p.updateChrome(viewport.scale));

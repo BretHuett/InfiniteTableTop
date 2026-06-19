@@ -4,6 +4,14 @@
 const MAX_RENDER = 5; // cap bitmap pixels-per-CSS-px so canvases stay sane
 const DPR = window.devicePixelRatio || 1;
 
+// Hard limits on the backing <canvas> bitmap. Large-format PDFs (e.g. A1/A0
+// engineering drawings) would otherwise demand 100MP+ canvases that GPU-backed
+// browsers refuse to allocate, causing renders to fail or come back blank. We
+// keep both the per-side dimension and the total area well within what every
+// desktop browser handles reliably.
+const MAX_CANVAS_DIM = 8192;
+const MAX_CANVAS_AREA = 24e6; // ~24 megapixels
+
 export class Paper {
   /**
    * @param {import("pdfjs-dist").PDFDocumentProxy} doc
@@ -138,9 +146,18 @@ export class Paper {
   }
 
   // ---------- rendering ----------
-  async init() {
-    const page = await this.doc.getPage(this.pageNum);
-    this._page = page;
+  /** Largest render scale whose canvas still fits the browser's limits. */
+  _maxScale() {
+    if (!this.baseW || !this.baseH) return MAX_RENDER;
+    return Math.min(
+      MAX_RENDER,
+      MAX_CANVAS_DIM / this.baseW,
+      MAX_CANVAS_DIM / this.baseH,
+      Math.sqrt(MAX_CANVAS_AREA / (this.baseW * this.baseH))
+    );
+  }
+
+  _applyPageSize(page) {
     const vp1 = page.getViewport({ scale: 1 });
     this.baseW = Math.round(vp1.width);
     this.baseH = Math.round(vp1.height);
@@ -148,6 +165,13 @@ export class Paper {
     this.el.style.height = `${this.baseH}px`;
     this.canvas.style.width = `${this.baseW}px`;
     this.canvas.style.height = `${this.baseH}px`;
+    // Never request more resolution than the canvas can hold.
+    this.renderScale = Math.min(this.renderScale, this._maxScale());
+  }
+
+  async init() {
+    this._page = await this.doc.getPage(this.pageNum);
+    this._applyPageSize(this._page);
     await this._render();
   }
 
@@ -158,13 +182,7 @@ export class Paper {
     this._page = await this.doc.getPage(next);
     this._updatePageLabel();
     // Different pages can be different sizes (e.g. landscape inserts).
-    const vp1 = this._page.getViewport({ scale: 1 });
-    this.baseW = Math.round(vp1.width);
-    this.baseH = Math.round(vp1.height);
-    this.el.style.width = `${this.baseW}px`;
-    this.el.style.height = `${this.baseH}px`;
-    this.canvas.style.width = `${this.baseW}px`;
-    this.canvas.style.height = `${this.baseH}px`;
+    this._applyPageSize(this._page);
     await this._render();
   }
 
@@ -176,28 +194,40 @@ export class Paper {
       } catch {}
       this._renderTask = null;
     }
-    const scale = this.renderScale;
-    const vp = this._page.getViewport({ scale });
-    const ctx = this.canvas.getContext("2d", { alpha: false });
-    this.canvas.width = Math.round(vp.width);
-    this.canvas.height = Math.round(vp.height);
 
-    try {
-      this._renderTask = this._page.render({ canvasContext: ctx, viewport: vp });
-      await this._renderTask.promise;
-      this._renderTask = null;
-      this.loadingEl.style.display = "none";
-    } catch (err) {
-      if (err && err.name === "RenderingCancelledException") return; // superseded
-      console.error("Render failed", err);
-      this.loadingEl.textContent = "Failed to render";
+    // Try the requested scale, then back off if the browser can't allocate /
+    // render the canvas (common with very large pages on some GPUs).
+    let scale = Math.min(this.renderScale, this._maxScale());
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        // Allocating the bitmap can itself throw for very large pages on some
+        // GPUs, so keep it inside the try to drive the back-off below.
+        const vp = this._page.getViewport({ scale });
+        this.canvas.width = Math.round(vp.width);
+        this.canvas.height = Math.round(vp.height);
+        const ctx = this.canvas.getContext("2d", { alpha: false });
+        if (!ctx) throw new Error("Could not allocate canvas context");
+        this._renderTask = this._page.render({ canvasContext: ctx, viewport: vp });
+        await this._renderTask.promise;
+        this._renderTask = null;
+        this.renderScale = scale;
+        this.loadingEl.style.display = "none";
+        return;
+      } catch (err) {
+        this._renderTask = null;
+        if (err && err.name === "RenderingCancelledException") return; // superseded
+        console.error(`Render failed at scale ${scale.toFixed(2)}`, err);
+        scale *= 0.6; // shrink the canvas and try again
+      }
     }
+    this.loadingEl.textContent = "Couldn't render this page";
   }
 
   /** Bump resolution when the user has zoomed in past the current bitmap. */
   maybeImprove(worldScale) {
     if (!this._page || !this._isVisible()) return;
-    const desired = Math.min(MAX_RENDER, Math.round(worldScale * DPR * 1.1 * 10) / 10);
+    const cap = this._maxScale();
+    const desired = Math.min(cap, Math.round(worldScale * DPR * 1.1 * 10) / 10);
     if (desired > this.renderScale + 0.15) {
       this.renderScale = desired;
       this._render();
