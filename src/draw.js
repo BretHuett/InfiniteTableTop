@@ -138,6 +138,41 @@ export class DrawController {
     for (const s of this.strokes) s.el.remove();
     this.strokes = [];
   }
+
+  // ---- persistence ----
+  /** Plain-data snapshot of all strokes (world coordinates). */
+  serialize() {
+    return this.strokes.map((s) => ({
+      type: s.type,
+      color: s.color,
+      width: s.width,
+      points: s.points.map((p) => [+p.x.toFixed(2), +p.y.toFixed(2)]),
+    }));
+  }
+
+  /** Recreate a stroke from saved data. */
+  addStroke({ type, color, width, points }) {
+    const pts = points.map((p) => (Array.isArray(p) ? { x: p[0], y: p[1] } : p));
+    const hl = type === "highlighter";
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", color);
+    path.setAttribute("stroke-width", width);
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    if (hl) {
+      path.setAttribute("stroke-opacity", "0.35");
+      path.style.mixBlendMode = "multiply";
+    }
+    path.setAttribute("d", toPath(pts));
+    this.svg.appendChild(path);
+    this.strokes.push({ points: pts, el: path, type, color, width });
+  }
+
+  loadStrokes(list) {
+    this.clear();
+    for (const s of list) this.addStroke(s);
+  }
 }
 
 // Build a smooth path (quadratic through midpoints) from world points.

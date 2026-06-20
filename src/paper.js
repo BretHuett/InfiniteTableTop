@@ -18,12 +18,13 @@ export class Paper {
    * @param {string} name
    * @param {object} ctx  { world, viewport, app }
    */
-  constructor(doc, name, { world, viewport, app, page = 1, singlePage = false }) {
+  constructor(doc, name, { world, viewport, app, page = 1, singlePage = false, sourceId = null }) {
     this.doc = doc;
     this.name = name;
     this.world = world;
     this.viewport = viewport;
     this.app = app;
+    this.sourceId = sourceId; // which embedded PDF source this sheet renders
 
     // Track how many papers share this doc so we only free it on the last close.
     doc.__refs = (doc.__refs || 0) + 1;

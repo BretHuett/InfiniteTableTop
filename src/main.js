@@ -1,8 +1,11 @@
 import "./style.css";
+import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { Viewport } from "./viewport.js";
 import { Paper } from "./paper.js";
 import { loadPdf } from "./pdf.js";
 import { DrawController } from "./draw.js";
+
+const WORKSPACE_VERSION = 1;
 
 const GAP = 64; // world px between papers in a grid
 
@@ -44,6 +47,8 @@ const app = {
   mode: "move",
   selection: new Set(),
   groups: [],
+  sources: new Map(), // id -> { id, name, bytes, doc } — kept so workspaces can be saved
+  _sid: 0,
   _gid: 0,
   _colorIdx: 0,
   _groupColors: ["#e23b3b", "#2f7bf6", "#23a559", "#f5a623", "#a855f7", "#ec4899", "#14b8a6"],
@@ -104,12 +109,25 @@ const app = {
     return ms;
   },
 
+  /** Register PDF bytes as a reusable source and load its pdf.js document. */
+  async _addSource(name, bytes, id = null) {
+    const sid = id || `doc${this._sid++}`;
+    const doc = await loadPdf(bytes.slice()); // give pdf.js its own copy; keep ours
+    const src = { id: sid, name, bytes, doc };
+    this.sources.set(sid, src);
+    return src;
+  },
+
   removePaper(paper) {
     const i = this.papers.indexOf(paper);
     if (i >= 0) this.papers.splice(i, 1);
     this.selection.delete(paper);
     if (paper.group) this._removeFromGroup(paper);
     paper.destroy();
+    // Drop the source once no sheet uses it anymore.
+    if (paper.sourceId && !this.papers.some((p) => p.sourceId === paper.sourceId)) {
+      this.sources.delete(paper.sourceId);
+    }
     if (this.papers.length === 0) emptyState.classList.remove("hidden");
     this.refresh();
   },
@@ -268,19 +286,21 @@ const app = {
       await paintTick();
 
       // Loading the document is the real "is this a valid PDF?" gate.
-      let doc;
+      let source;
       try {
-        doc = await loadPdf(file);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        source = await this._addSource(file.name, bytes);
       } catch (err) {
         console.error(`Could not open ${file.name}:`, err);
         alert(`Could not open "${file.name}".\n\n${err?.message || err}`);
         continue;
       }
       // From here the file is valid; a rendering hiccup must not throw it away.
-      const paper = new Paper(doc, file.name.replace(/\.pdf$/i, ""), {
+      const paper = new Paper(source.doc, file.name.replace(/\.pdf$/i, ""), {
         world: worldEl,
         viewport,
         app,
+        sourceId: source.id,
       });
       try {
         await paper.init();
@@ -324,7 +344,7 @@ const app = {
   /** Split a multi-page paper into one separate sheet per page. */
   async explodePaper(paper) {
     if (paper.singlePage || paper.numPages <= 1) return;
-    const { doc, name, numPages } = paper;
+    const { doc, name, numPages, sourceId } = paper;
     const originX = paper.x;
     const originY = paper.y;
 
@@ -336,6 +356,7 @@ const app = {
         app,
         page: i,
         singlePage: true,
+        sourceId,
       });
       await child.init();
       child.el.style.zIndex = String(++this.topZ);
@@ -371,7 +392,176 @@ const app = {
     if (this.papers.length === 0) return;
     viewport.fitBounds(unionBounds(this.papers));
   },
+
+  // ---------- workspace save / load ----------
+  /** Bundle the PDFs + layout + drawings into a .ittt (zip) file and download it. */
+  saveWorkspace() {
+    if (this.papers.length === 0) {
+      alert("Nothing to save yet — open some PDFs first.");
+      return;
+    }
+    // Stable per-paper ids so groups can reference members.
+    const ids = new Map();
+    this.papers.forEach((p, i) => ids.set(p, i));
+
+    const usedSources = new Set(this.papers.map((p) => p.sourceId).filter(Boolean));
+    const manifest = {
+      version: WORKSPACE_VERSION,
+      savedAt: new Date().toISOString(),
+      viewport: { scale: viewport.scale, panX: viewport.panX, panY: viewport.panY },
+      sources: [...usedSources].map((sid) => ({
+        id: sid,
+        name: this.sources.get(sid)?.name || `${sid}.pdf`,
+        file: `pdfs/${sid}.pdf`,
+      })),
+      papers: this.papers.map((p) => ({
+        id: ids.get(p),
+        sourceId: p.sourceId,
+        name: p.name,
+        page: p.pageNum,
+        singlePage: p.singlePage,
+        x: p.x,
+        y: p.y,
+        rotation: p.rotation,
+        z: parseInt(p.el.style.zIndex, 10) || 1,
+      })),
+      groups: this.groups.map((g) => ({
+        members: [...g.papers].map((p) => ids.get(p)),
+        color: g.color,
+        hidden: g.hidden,
+      })),
+      strokes: draw.serialize(),
+    };
+
+    const files = { "manifest.json": strToU8(JSON.stringify(manifest)) };
+    for (const sid of usedSources) {
+      const src = this.sources.get(sid);
+      if (src) files[`pdfs/${sid}.pdf`] = src.bytes;
+    }
+    // level 0: PDFs are already compressed, so just store (fast, no bloat).
+    const zipped = zipSync(files, { level: 0 });
+    const blob = new Blob([zipped], { type: "application/octet-stream" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tabletop-${stamp()}.ittt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  },
+
+  async loadWorkspace(file) {
+    let manifest, entries;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      entries = unzipSync(bytes);
+      manifest = JSON.parse(strFromU8(entries["manifest.json"]));
+    } catch (err) {
+      console.error("Could not read workspace:", err);
+      alert(`Could not open this workspace file.\n\n${err?.message || err}`);
+      return;
+    }
+    if (this.papers.length && !confirm("Replace the current table with this workspace?")) {
+      return;
+    }
+
+    // Clear everything currently on the table.
+    [...this.papers].forEach((p) => this.removePaper(p));
+    draw.clear();
+    this.sources.clear();
+
+    const total = manifest.papers.length;
+    showProgress("Opening workspace…", `0 / ${total}`, 0);
+    await paintTick();
+
+    // Recreate sources (one pdf.js doc per embedded PDF).
+    const srcById = new Map();
+    for (const s of manifest.sources || []) {
+      const bytes = entries[s.file];
+      if (!bytes) continue;
+      try {
+        const src = await this._addSource(s.name, bytes, s.id);
+        srcById.set(s.id, src);
+      } catch (err) {
+        console.error(`Workspace source ${s.id} failed to load:`, err);
+      }
+    }
+
+    // Recreate papers in saved order; remember by saved id for grouping.
+    const byId = new Map();
+    let maxZ = 1;
+    for (let i = 0; i < manifest.papers.length; i++) {
+      const d = manifest.papers[i];
+      const src = srcById.get(d.sourceId);
+      if (!src) continue;
+      showProgress(`Restoring ${d.name}`, `${i + 1} / ${total}`, i / total);
+      await paintTick();
+      const paper = new Paper(src.doc, d.name, {
+        world: worldEl,
+        viewport,
+        app,
+        page: d.page,
+        singlePage: d.singlePage,
+        sourceId: d.sourceId,
+      });
+      try {
+        await paper.init();
+      } catch (err) {
+        console.error(`Problem rendering ${d.name}:`, err);
+      }
+      paper.x = d.x;
+      paper.y = d.y;
+      paper.rotation = d.rotation;
+      paper._applyTransform();
+      paper.el.style.zIndex = String(d.z);
+      maxZ = Math.max(maxZ, d.z);
+      this.papers.push(paper);
+      byId.set(d.id, paper);
+      showProgress(`Restoring ${d.name}`, `${i + 1} / ${total}`, (i + 1) / total);
+    }
+    this.topZ = maxZ;
+
+    // Recreate groups.
+    for (const g of manifest.groups || []) {
+      const members = g.members.map((id) => byId.get(id)).filter(Boolean);
+      if (members.length < 2) continue;
+      this._rebuildGroup(members, g.color, g.hidden);
+    }
+
+    // Recreate drawings.
+    if (manifest.strokes) draw.loadStrokes(manifest.strokes);
+
+    hideProgress();
+    if (this.papers.length === 0) {
+      emptyState.classList.remove("hidden");
+      return;
+    }
+    emptyState.classList.add("hidden");
+    this.papers.forEach((p) => p.updateChrome(viewport.scale));
+    if (manifest.viewport) {
+      viewport.setTransform(manifest.viewport.scale, manifest.viewport.panX, manifest.viewport.panY);
+    } else {
+      this.fitAll();
+    }
+  },
+
+  _rebuildGroup(members, color, hidden) {
+    const g = { id: ++this._gid, papers: new Set(members), hidden: false, color, chip: null };
+    for (const p of members) {
+      p.group = g;
+      p.el.classList.add("grouped");
+      p.el.style.setProperty("--group-color", color);
+    }
+    this.groups.push(g);
+    if (hidden) this._hideGroup(g);
+    // keep colour cycling roughly in step so new groups don't immediately clash
+    this._colorIdx++;
+  },
 };
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
 
 // ---- grid helpers ----
 function gridDims(n) {
@@ -444,6 +634,17 @@ document.getElementById("tidy-btn").addEventListener("click", () => app.tidy());
 document.getElementById("fit-btn").addEventListener("click", () => app.fitAll());
 document.getElementById("reset-btn").addEventListener("click", () => viewport.reset());
 fileInput.addEventListener("change", (e) => app.openFiles(e.target.files));
+
+// ---- workspace save / open ----
+const workspaceInput = document.getElementById("workspace-input");
+document.getElementById("save-ws-btn").addEventListener("click", () => app.saveWorkspace());
+document.getElementById("open-ws-btn").addEventListener("click", () => {
+  workspaceInput.value = "";
+  workspaceInput.click();
+});
+workspaceInput.addEventListener("change", (e) => {
+  if (e.target.files?.[0]) app.loadWorkspace(e.target.files[0]);
+});
 
 // ---- empty-canvas clicks: deselect, or Shift+drag a rubber-band box ----
 let box = null; // { sx, sy } screen-space start, while dragging a selection box
@@ -552,12 +753,21 @@ window.addEventListener("drop", (e) => {
   e.preventDefault();
   dragDepth = 0;
   document.body.classList.remove("drag-over");
-  if (e.dataTransfer?.files?.length) app.openFiles(e.dataTransfer.files);
+  const files = e.dataTransfer?.files;
+  if (!files?.length) return;
+  const ws = [...files].find((f) => /\.(ittt|zip)$/i.test(f.name));
+  if (ws) app.loadWorkspace(ws);
+  else app.openFiles(files);
 });
 
 // ---- keyboard shortcuts ----
 window.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT") return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+    app.saveWorkspace();
+    e.preventDefault();
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
     draw.undo();
     e.preventDefault();

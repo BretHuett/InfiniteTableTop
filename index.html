@@ -18,6 +18,9 @@
       <div class="tools">
         <button id="open-btn" class="primary" title="Open one or more PDFs">＋ Open PDFs</button>
         <span class="divider"></span>
+        <button id="save-ws-btn" title="Save this workspace to a file">⤓ Save</button>
+        <button id="open-ws-btn" title="Open a saved workspace file">⤒ Open workspace</button>
+        <span class="divider"></span>
         <button id="tidy-btn" title="Re-arrange papers into a neat grid">⊞ Tidy</button>
         <button id="fit-btn" title="Zoom to fit everything on screen (F)">⤢ Fit all</button>
         <button id="reset-btn" title="Reset zoom to 100% (0)">100%</button>
@@ -104,6 +107,7 @@
     </div>
 
     <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden />
+    <input id="workspace-input" type="file" accept=".ittt,.zip" hidden />
 
     <script type="module" src="/src/main.js"></script>
   </body>

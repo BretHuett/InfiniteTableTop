@@ -29,6 +29,10 @@ paper in front of you.
   and stays put with everything else. Pick a colour and thickness, undo, or clear.
 - **Loading progress** — opening a batch of files shows a progress bar with the
   current filename and count, so large drawings don't feel like a hang.
+- **Save & reopen workspaces** — **Save** bundles everything (the PDFs themselves,
+  their positions, rotations, groups, drawings and the current view) into a single
+  `.ittt` file. **Open workspace** restores it exactly, even after restarting — no
+  need to find the original PDFs again, because they travel inside the file.
 - **Tidy & Fit** — one click to re-grid everything, another to frame the whole table.
 
 ## Getting started
@@ -68,6 +72,8 @@ npm run preview    # serve the built bundle locally
 | Fit everything on screen | **Fit all** button, or `F` |
 | Re-arrange into a grid | **Tidy** button |
 | Reset zoom to 100% | **100%** button, or `0` |
+| Save workspace to a file | **Save** button, or `Ctrl`/`Cmd` + `S` |
+| Open a saved workspace | **Open workspace** button, or drop a `.ittt` file in |
 | Move / select tool | left palette, or `V` |
 | Pen / Highlighter / Eraser | left palette, or `P` / `H` / `E` |
 | Undo last stroke | `Ctrl`/`Cmd` + `Z`, or the ↶ button |
@@ -79,3 +85,8 @@ Built with [Vite](https://vitejs.dev/) and [PDF.js](https://mozilla.github.io/pd
 A single transformed `#world` layer provides the pan/zoom; each PDF is rendered to its
 own `<canvas>` positioned in world coordinates. Everything runs locally in your
 browser — your PDFs are never uploaded anywhere.
+
+A saved workspace (`.ittt`) is just a ZIP archive: a `manifest.json` describing the
+layout, groups and drawings, alongside the original PDF files (stored uncompressed,
+since PDFs are already compressed). That makes a workspace fully self-contained and
+portable — open it on any machine and the documents come with it.

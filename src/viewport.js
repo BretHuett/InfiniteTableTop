@@ -66,6 +66,14 @@ export class Viewport {
     this.setScale(this.scale * factor, cx, cy);
   }
 
+  /** Restore an exact transform (used when loading a workspace). */
+  setTransform(scale, panX, panY) {
+    this.scale = scale;
+    this.panX = panX;
+    this.panY = panY;
+    this.apply();
+  }
+
   reset() {
     // 100% centred-ish on whatever the user is looking at.
     const cx = window.innerWidth / 2;
