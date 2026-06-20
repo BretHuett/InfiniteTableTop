@@ -34,9 +34,9 @@ paper in front of you.
   `.ittt` file. **Open workspace** restores it exactly, even after restarting — no
   need to find the original PDFs again, because they travel inside the file.
 - **Tidy & Fit** — one click to re-grid everything, another to frame the whole table.
-- **Get the toolbars out of the way** — collapse all the chrome to a small pill in the
-  top-left corner, or hide it entirely for a distraction-free view. Press **Tab** to
-  cycle full → minimised → hidden (a faint corner tab brings it back).
+- **Get the toolbars out of the way** — hide all the chrome for a distraction-free
+  view, leaving only a faint tab in the top-left corner to bring it back. Press
+  **Tab** (or the − button) to toggle.
 
 ## Getting started
 
@@ -77,7 +77,7 @@ npm run preview    # serve the built bundle locally
 | Reset zoom to 100% | **100%** button, or `0` |
 | Save workspace to a file | **Save** button, or `Ctrl`/`Cmd` + `S` |
 | Open a saved workspace | **Open workspace** button, or drop a `.ittt` file in |
-| Minimise / hide the toolbars | **Tab** cycles full → minimised → hidden (or the − / corner-pill buttons) |
+| Hide / show the toolbars | **Tab**, or the − button; a faint corner tab restores it |
 | Move / select tool | left palette, or `V` |
 | Pen / Highlighter / Eraser | left palette, or `P` / `H` / `E` |
 | Undo last stroke | `Ctrl`/`Cmd` + `Z`, or the ↶ button |

@@ -658,25 +658,17 @@ workspaceInput.addEventListener("change", (e) => {
   if (e.target.files?.[0]) app.loadWorkspace(e.target.files[0]);
 });
 
-// ---- chrome (toolbars) visibility: full -> mini -> hidden ----
-const CHROME_MODES = ["full", "mini", "hidden"];
-let chromeMode = "full";
-function setChrome(mode) {
-  chromeMode = mode;
-  document.body.classList.toggle("ui-mini", mode === "mini");
-  document.body.classList.toggle("ui-hidden", mode === "hidden");
+// ---- chrome (toolbars) visibility: full <-> hidden (a faint corner tab) ----
+let chromeHidden = false;
+function setChrome(hidden) {
+  chromeHidden = hidden;
+  document.body.classList.toggle("ui-hidden", hidden);
 }
 function cycleChrome() {
-  setChrome(CHROME_MODES[(CHROME_MODES.indexOf(chromeMode) + 1) % CHROME_MODES.length]);
+  setChrome(!chromeHidden);
 }
-document.getElementById("collapse-btn").addEventListener("click", () => setChrome("mini"));
-document
-  .querySelector('#chrome-mini [data-act="expand"]')
-  .addEventListener("click", () => setChrome("full"));
-document
-  .querySelector('#chrome-mini [data-act="hide"]')
-  .addEventListener("click", () => setChrome("hidden"));
-document.getElementById("chrome-restore").addEventListener("click", () => setChrome("full"));
+document.getElementById("collapse-btn").addEventListener("click", () => setChrome(true));
+document.getElementById("chrome-restore").addEventListener("click", () => setChrome(false));
 
 // ---- empty-canvas clicks: deselect, or Shift+drag a rubber-band box ----
 let box = null; // { sx, sy } screen-space start, while dragging a selection box
