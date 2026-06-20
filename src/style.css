@@ -272,6 +272,104 @@ button {
   font-size: 13px;
 }
 
+/* ---------- Chrome collapse / hide ---------- */
+#collapse-btn {
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  width: 32px;
+}
+#collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The compact corner pill shown in "minimised" mode. */
+#chrome-mini {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  display: none; /* shown by body.ui-mini */
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(37, 40, 46, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  z-index: 2100;
+}
+#chrome-mini .logo {
+  color: var(--accent);
+  font-size: 16px;
+  padding: 0 4px;
+}
+#chrome-mini button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+}
+#chrome-mini button:hover {
+  background: #3a3e46;
+}
+#chrome-mini svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The barely-there tab shown in "hidden" mode. */
+#chrome-restore {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  display: none; /* shown by body.ui-hidden */
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  background: rgba(37, 40, 46, 0.55);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+  z-index: 2100;
+}
+#chrome-restore:hover {
+  opacity: 1;
+}
+
+/* Minimised: hide the big bars, show the corner pill. */
+body.ui-mini #toolbar,
+body.ui-mini #draw-tools,
+body.ui-mini #help,
+body.ui-mini #selection-bar {
+  display: none !important;
+}
+body.ui-mini #chrome-mini {
+  display: flex;
+}
+
+/* Hidden: hide everything, leave only the restore tab. */
+body.ui-hidden #toolbar,
+body.ui-hidden #draw-tools,
+body.ui-hidden #help,
+body.ui-hidden #selection-bar,
+body.ui-hidden #chrome-mini {
+  display: none !important;
+}
+body.ui-hidden #chrome-restore {
+  display: grid;
+}
+
 /* ---------- Empty state ---------- */
 #empty-state {
   position: fixed;

@@ -26,8 +26,26 @@
         <button id="reset-btn" title="Reset zoom to 100% (0)">100%</button>
         <span class="divider"></span>
         <span id="zoom-readout" title="Current zoom">100%</span>
+        <span class="divider"></span>
+        <button id="collapse-btn" title="Minimise toolbars (Tab)">
+          <svg viewBox="0 0 24 24"><path d="M6 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
       </div>
     </header>
+
+    <!-- Collapsed chrome: a small pill parked in the top-left corner -->
+    <div id="chrome-mini">
+      <span class="logo">▦</span>
+      <button data-act="expand" title="Show toolbars (Tab)">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button data-act="hide" title="Hide everything (Tab)">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Hidden chrome: a tiny tab to bring the UI back -->
+    <button id="chrome-restore" title="Show toolbars (Tab)">▦</button>
 
     <div id="empty-state">
       <div class="empty-card">
@@ -103,7 +121,7 @@
       <strong>Drag empty space</strong> or <strong>middle-drag</strong> to pan ·
       <strong>Scroll</strong> to zoom · <strong>Drag a paper</strong> to move ·
       grab the <strong>↻ handle</strong> to rotate · pick a <strong>tool</strong> on the
-      left to draw (middle-drag still pans)
+      left to draw (middle-drag still pans) · press <strong>Tab</strong> to hide the toolbars
     </div>
 
     <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden />

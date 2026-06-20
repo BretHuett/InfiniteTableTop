@@ -39,7 +39,19 @@ function hideProgress() {
   progressEl.classList.add("hidden");
 }
 // Yield to the browser so the bar actually paints between heavy renders.
-const paintTick = () => new Promise((r) => requestAnimationFrame(() => r()));
+// requestAnimationFrame is paused while the tab is hidden, so fall back to a
+// timer — otherwise opening files in a backgrounded tab would hang.
+const paintTick = () =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    requestAnimationFrame(finish);
+    setTimeout(finish, 50);
+  });
 
 const app = {
   papers: [],
@@ -646,6 +658,26 @@ workspaceInput.addEventListener("change", (e) => {
   if (e.target.files?.[0]) app.loadWorkspace(e.target.files[0]);
 });
 
+// ---- chrome (toolbars) visibility: full -> mini -> hidden ----
+const CHROME_MODES = ["full", "mini", "hidden"];
+let chromeMode = "full";
+function setChrome(mode) {
+  chromeMode = mode;
+  document.body.classList.toggle("ui-mini", mode === "mini");
+  document.body.classList.toggle("ui-hidden", mode === "hidden");
+}
+function cycleChrome() {
+  setChrome(CHROME_MODES[(CHROME_MODES.indexOf(chromeMode) + 1) % CHROME_MODES.length]);
+}
+document.getElementById("collapse-btn").addEventListener("click", () => setChrome("mini"));
+document
+  .querySelector('#chrome-mini [data-act="expand"]')
+  .addEventListener("click", () => setChrome("full"));
+document
+  .querySelector('#chrome-mini [data-act="hide"]')
+  .addEventListener("click", () => setChrome("hidden"));
+document.getElementById("chrome-restore").addEventListener("click", () => setChrome("full"));
+
 // ---- empty-canvas clicks: deselect, or Shift+drag a rubber-band box ----
 let box = null; // { sx, sy } screen-space start, while dragging a selection box
 canvasEl.addEventListener("pointerdown", (e) => {
@@ -763,6 +795,11 @@ window.addEventListener("drop", (e) => {
 // ---- keyboard shortcuts ----
 window.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT") return;
+  if (e.key === "Tab") {
+    cycleChrome();
+    e.preventDefault();
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
     app.saveWorkspace();
     e.preventDefault();
