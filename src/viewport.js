@@ -7,7 +7,6 @@
 
 const MIN_SCALE = 0.04;
 const MAX_SCALE = 8;
-const GRID = 48; // world px between grid dots at scale 1
 
 export class Viewport {
   constructor(canvasEl, worldEl) {
@@ -42,10 +41,8 @@ export class Viewport {
 
   apply() {
     this.world.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.scale})`;
-    // Keep the background grid aligned with the world.
-    const g = GRID * this.scale;
-    this.canvas.style.backgroundSize = `${g}px ${g}px, ${g * 4}px ${g * 4}px`;
-    this.canvas.style.backgroundPosition = `${this.panX}px ${this.panY}px, ${this.panX}px ${this.panY}px`;
+    // The background (grid / texture) is painted by a viewport.onChange listener
+    // so it can track pan/zoom; see backgrounds.js.
     this._emit();
   }
 

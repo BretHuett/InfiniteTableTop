@@ -35,12 +35,8 @@ body {
   inset: 0;
   overflow: hidden;
   cursor: grab;
-  /* Two-layer dotted/checker grid that scrolls with the content via JS. */
+  /* Background (grid / solid / woodgrain) is painted by backgrounds.js. */
   background-color: var(--bg);
-  background-image:
-    radial-gradient(circle, var(--bg-grid) 1.5px, transparent 1.5px),
-    radial-gradient(circle, var(--bg-grid-strong) 1.5px, transparent 1.5px);
-  background-repeat: repeat, repeat;
 }
 #canvas.panning {
   cursor: grabbing;
@@ -271,6 +267,28 @@ button {
   text-align: center;
   font-size: 13px;
 }
+#bg-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #2f333a
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%239aa0aa' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+  background-size: 11px;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 7px 26px 7px 11px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+#bg-select:hover {
+  background-color: #3a3e46;
+}
+#bg-select option {
+  background: var(--panel);
+  color: var(--text);
+}
 
 /* ---------- Chrome collapse / hide ---------- */
 #collapse-btn {
@@ -366,6 +384,13 @@ body.ui-hidden #chrome-restore {
 .drop-hint {
   font-size: 13px;
   margin-top: 18px;
+}
+/* Keep the empty-state legible on light (white / pine) backgrounds. */
+body.bg-light .empty-card h1 {
+  color: #1b1d21;
+}
+body.bg-light .empty-card p {
+  color: #44474d;
 }
 
 /* ---------- Help bar ---------- */

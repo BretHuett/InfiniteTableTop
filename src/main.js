@@ -4,8 +4,10 @@ import { Viewport } from "./viewport.js";
 import { Paper } from "./paper.js";
 import { loadPdf } from "./pdf.js";
 import { DrawController } from "./draw.js";
+import { BACKGROUNDS, paintBackground, positionBackground } from "./backgrounds.js";
 
 const WORKSPACE_VERSION = 1;
+const BG_STORAGE_KEY = "itt-background";
 
 const GAP = 64; // world px between papers in a grid
 
@@ -420,6 +422,7 @@ const app = {
     const manifest = {
       version: WORKSPACE_VERSION,
       savedAt: new Date().toISOString(),
+      background: bgMode,
       viewport: { scale: viewport.scale, panX: viewport.panX, panY: viewport.panY },
       sources: [...usedSources].map((sid) => ({
         id: sid,
@@ -540,6 +543,9 @@ const app = {
 
     // Recreate drawings.
     if (manifest.strokes) draw.loadStrokes(manifest.strokes);
+
+    // Restore the table background.
+    setBackground(manifest.background || "default");
 
     hideProgress();
     if (this.papers.length === 0) {
@@ -669,6 +675,32 @@ function cycleChrome() {
 }
 document.getElementById("collapse-btn").addEventListener("click", () => setChrome(true));
 document.getElementById("chrome-restore").addEventListener("click", () => setChrome(false));
+
+// ---- table background ----
+const bgSelect = document.getElementById("bg-select");
+for (const b of BACKGROUNDS) {
+  const opt = document.createElement("option");
+  opt.value = b.id;
+  opt.textContent = b.label;
+  bgSelect.appendChild(opt);
+}
+let bgMode = "default";
+function setBackground(mode, persist = true) {
+  bgMode = BACKGROUNDS.some((b) => b.id === mode) ? mode : "default";
+  bgSelect.value = bgMode;
+  document.body.classList.toggle("bg-light", bgMode === "white" || bgMode === "pinewood");
+  paintBackground(canvasEl, bgMode);
+  positionBackground(canvasEl, bgMode, viewport);
+  if (persist) {
+    try {
+      localStorage.setItem(BG_STORAGE_KEY, bgMode);
+    } catch {}
+  }
+}
+bgSelect.addEventListener("change", () => setBackground(bgSelect.value));
+// Track pan/zoom without re-assigning the (heavy) background image each frame.
+viewport.onChange(() => positionBackground(canvasEl, bgMode, viewport));
+setBackground(localStorage.getItem(BG_STORAGE_KEY) || "default", false);
 
 // ---- empty-canvas clicks: deselect, or Shift+drag a rubber-band box ----
 let box = null; // { sx, sy } screen-space start, while dragging a selection box

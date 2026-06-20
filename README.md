@@ -34,6 +34,9 @@ paper in front of you.
   `.ittt` file. **Open workspace** restores it exactly, even after restarting — no
   need to find the original PDFs again, because they travel inside the file.
 - **Tidy & Fit** — one click to re-grid everything, another to frame the whole table.
+- **Choose your table surface** — a background dropdown switches between the default
+  dotted grid, flat black, white, or a dark/pine **woodgrain** texture (generated on
+  the fly, no image files). Your choice is remembered and saved with the workspace.
 - **Get the toolbars out of the way** — hide all the chrome for a distraction-free
   view, leaving only a faint tab in the top-left corner to bring it back. Press
   **Tab** (or the − button) to toggle.
