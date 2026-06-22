@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>InfiniteTableTop</title>
   </head>
   <body>
@@ -21,6 +22,8 @@
         <button id="save-ws-btn" title="Save this workspace to a file">⤓ Save</button>
         <button id="open-ws-btn" title="Open a saved workspace file">⤒ Open workspace</button>
         <span class="divider"></span>
+        <button id="search-btn" title="Search text in documents (Ctrl+F)">🔍 Search</button>
+        <span class="divider"></span>
         <button id="tidy-btn" title="Re-arrange papers into a neat grid">⊞ Tidy</button>
         <button id="fit-btn" title="Zoom to fit everything on screen (F)">⤢ Fit all</button>
         <button id="reset-btn" title="Reset zoom to 100% (0)">100%</button>
@@ -37,6 +40,20 @@
 
     <!-- Hidden chrome: a tiny faint tab to bring the UI back -->
     <button id="chrome-restore" title="Show toolbars (Tab)">▦</button>
+
+    <!-- Text / OCR search -->
+    <div id="search-panel" class="hidden">
+      <div class="search-row">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" type="text" placeholder="Search text in documents…" />
+        <span id="search-count"></span>
+        <button id="search-prev" title="Previous match (Shift+Enter)">‹</button>
+        <button id="search-next" title="Next match (Enter)">›</button>
+        <button id="search-close" title="Close (Esc)">✕</button>
+      </div>
+      <div id="search-status"></div>
+      <div id="search-results"></div>
+    </div>
 
     <div id="empty-state">
       <div class="empty-card">

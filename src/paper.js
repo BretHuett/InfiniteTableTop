@@ -51,6 +51,7 @@ export class Paper {
     el.className = "paper";
     el.innerHTML = `
       <canvas></canvas>
+      <div class="hl-layer"></div>
       <div class="loading">Rendering…</div>
       <div class="paper-bar">
         <span class="label"></span>
@@ -65,6 +66,7 @@ export class Paper {
     `;
     this.el = el;
     this.canvas = el.querySelector("canvas");
+    this.hlLayer = el.querySelector(".hl-layer");
     this.loadingEl = el.querySelector(".loading");
     this.barEl = el.querySelector(".paper-bar");
     this.labelEl = el.querySelector(".label");
@@ -147,6 +149,29 @@ export class Paper {
     this.handleEl.style.setProperty("--k", k);
   }
 
+  // ---------- search highlights (boxes in paper-local CSS px) ----------
+  setHighlights(boxes) {
+    this._hlBoxes = boxes;
+    this.hlLayer.innerHTML = "";
+    for (const b of boxes) {
+      const d = document.createElement("div");
+      d.className = "hl";
+      d.style.left = `${b.l}px`;
+      d.style.top = `${b.t}px`;
+      d.style.width = `${b.w}px`;
+      d.style.height = `${b.h}px`;
+      d._box = b;
+      this.hlLayer.appendChild(d);
+    }
+  }
+  setActiveHighlight(box) {
+    for (const d of this.hlLayer.children) d.classList.toggle("active", d._box === box);
+  }
+  clearHighlights() {
+    this.hlLayer.innerHTML = "";
+    this._hlBoxes = null;
+  }
+
   // ---------- rendering ----------
   /** Largest render scale whose canvas still fits the browser's limits. */
   _maxScale() {
@@ -182,6 +207,8 @@ export class Paper {
     if (next === this.pageNum) return;
     this.pageNum = next;
     this._page = await this.doc.getPage(next);
+    this._searchWords = null; // page changed → re-index on next search
+    this.clearHighlights();
     this._updatePageLabel();
     // Different pages can be different sizes (e.g. landscape inserts).
     this._applyPageSize(this._page);

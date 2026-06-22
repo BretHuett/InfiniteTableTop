@@ -34,6 +34,13 @@ paper in front of you.
   `.ittt` file. **Open workspace** restores it exactly, even after restarting — no
   need to find the original PDFs again, because they travel inside the file.
 - **Tidy & Fit** — one click to re-grid everything, another to frame the whole table.
+- **Search across documents (with OCR)** — open the search panel (🔍 or **Ctrl/Cmd+F**)
+  and type. Matches are found via each PDF's text layer when it has one, and via
+  **OCR** ([Tesseract.js](https://tesseract.projectnaptha.com/)) for scanned / image
+  pages that don't. Hits are highlighted right on the sheets and you can jump between
+  them with the result list or `Enter` / `Shift+Enter`. *(OCR runs on a page's rendered
+  image; the English language data is fetched once on first use, so it needs a network
+  connection that first time.)*
 - **Choose your table surface** — a background dropdown switches between the default
   dotted grid, flat black, white, or a dark/pine **woodgrain** texture (generated on
   the fly, no image files). Your choice is remembered and saved with the workspace.
@@ -78,6 +85,7 @@ npm run preview    # serve the built bundle locally
 | Fit everything on screen | **Fit all** button, or `F` |
 | Re-arrange into a grid | **Tidy** button |
 | Reset zoom to 100% | **100%** button, or `0` |
+| Search text / OCR | **🔍 Search** button, or `Ctrl`/`Cmd` + `F`; `Enter` / `Shift+Enter` to step through hits |
 | Save workspace to a file | **Save** button, or `Ctrl`/`Cmd` + `S` |
 | Open a saved workspace | **Open workspace** button, or drop a `.ittt` file in |
 | Hide / show the toolbars | **Tab**, or the − button; a faint corner tab restores it |

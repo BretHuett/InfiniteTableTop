@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "vite": "^6.0.7"

@@ -5,6 +5,7 @@ import { Paper } from "./paper.js";
 import { loadPdf } from "./pdf.js";
 import { DrawController } from "./draw.js";
 import { BACKGROUNDS, paintBackground, positionBackground } from "./backgrounds.js";
+import { SearchController } from "./search.js";
 
 const WORKSPACE_VERSION = 1;
 const BG_STORAGE_KEY = "itt-background";
@@ -702,6 +703,102 @@ bgSelect.addEventListener("change", () => setBackground(bgSelect.value));
 viewport.onChange(() => positionBackground(canvasEl, bgMode, viewport));
 setBackground(localStorage.getItem(BG_STORAGE_KEY) || "default", false);
 
+// ---- text / OCR search ----
+const search = new SearchController(app);
+const searchPanel = document.getElementById("search-panel");
+const searchInput = document.getElementById("search-input");
+const searchCount = document.getElementById("search-count");
+const searchStatus = document.getElementById("search-status");
+const searchResults = document.getElementById("search-results");
+let searchOpen = false;
+let searchTimer = null;
+
+function renderSearchResults(results) {
+  searchResults.innerHTML = "";
+  for (const r of results) {
+    const row = document.createElement("div");
+    row.className = "search-result";
+    row.innerHTML =
+      `<span class="sr-name"></span>` +
+      (r.paper._searchSource === "ocr" ? `<span class="sr-badge">OCR</span>` : "") +
+      `<span class="sr-count">${r.count}</span>`;
+    row.querySelector(".sr-name").textContent = r.paper.name;
+    row.addEventListener("click", () => {
+      search.focus(r.startIndex, viewport);
+      updateSearchCount();
+    });
+    searchResults.appendChild(row);
+  }
+}
+function updateSearchCount() {
+  const n = search.matches.length;
+  searchCount.textContent = n ? `${search.active + 1}/${n}` : search.query ? "0" : "";
+}
+function doSearch() {
+  const results = search.run(searchInput.value);
+  renderSearchResults(results);
+  updateSearchCount();
+}
+async function openSearch() {
+  searchOpen = true;
+  searchPanel.classList.remove("hidden");
+  searchInput.focus();
+  searchInput.select();
+  if (app.papers.length === 0) {
+    searchStatus.textContent = "Open some PDFs first.";
+    return;
+  }
+  searchStatus.textContent = "Reading documents…";
+  search.onUpdate = doSearch; // refresh as OCR pages complete
+  await search.index((s) => (searchStatus.textContent = s));
+  if (search.ocrError) {
+    searchStatus.textContent =
+      "OCR couldn't run — it needs internet access the first time to fetch the language data.";
+  } else {
+    const total = app.papers.reduce((n, p) => n + (p._searchWords?.length || 0), 0);
+    searchStatus.textContent = total ? "" : "No readable text found in these documents.";
+  }
+  doSearch();
+}
+function closeSearch() {
+  searchOpen = false;
+  searchPanel.classList.add("hidden");
+  search.clear();
+  searchResults.innerHTML = "";
+  searchCount.textContent = "";
+  searchStatus.textContent = "";
+}
+function toggleSearch() {
+  if (searchOpen) closeSearch();
+  else openSearch();
+}
+
+document.getElementById("search-btn").addEventListener("click", toggleSearch);
+document.getElementById("search-close").addEventListener("click", closeSearch);
+document.getElementById("search-next").addEventListener("click", () => {
+  search.next(viewport);
+  updateSearchCount();
+});
+document.getElementById("search-prev").addEventListener("click", () => {
+  search.prev(viewport);
+  updateSearchCount();
+});
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 180);
+});
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (e.shiftKey) search.prev(viewport);
+    else search.next(viewport);
+    updateSearchCount();
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    closeSearch();
+  }
+});
+
 // ---- empty-canvas clicks: deselect, or Shift+drag a rubber-band box ----
 let box = null; // { sx, sy } screen-space start, while dragging a selection box
 canvasEl.addEventListener("pointerdown", (e) => {
@@ -818,6 +915,12 @@ window.addEventListener("drop", (e) => {
 
 // ---- keyboard shortcuts ----
 window.addEventListener("keydown", (e) => {
+  // Ctrl/Cmd+F works even while the search box is focused (so it can close it).
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+    toggleSearch();
+    e.preventDefault();
+    return;
+  }
   if (e.target.tagName === "INPUT") return;
   if (e.key === "Tab") {
     cycleChrome();
@@ -887,3 +990,4 @@ window.addEventListener("keydown", (e) => {
 window.__tabletop = app;
 window.__draw = draw;
 window.__setMode = setMode;
+window.__search = search;
