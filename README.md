@@ -89,8 +89,8 @@ npm run preview    # serve the built bundle locally
 | Save workspace to a file | **Save** button, or `Ctrl`/`Cmd` + `S` |
 | Open a saved workspace | **Open workspace** button, or drop a `.ittt` file in |
 | Hide / show the toolbars | **Tab**, or the − button; a faint corner tab restores it |
-| Move / select tool | left palette, or `V` |
-| Pen / Highlighter / Eraser | left palette, or `P` / `H` / `E` |
+| Move / select tool | left palette, or `1` |
+| Pen / Highlighter / Eraser | left palette, or `2` / `3` / `4` |
 | Undo last stroke | `Ctrl`/`Cmd` + `Z`, or the ↶ button |
 | Clear all drawings | 🗑 button on the palette |
 
