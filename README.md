@@ -18,6 +18,13 @@ paper in front of you.
   it to the front.
 - **Adaptive detail** — pages re-render at higher resolution as you zoom in, so you
   get crisp text instead of a blurry blow-up.
+- **Scales to hundreds of PDFs** — only the sheets on screen are rendered, each at a
+  resolution matched to its on-screen size; off-screen sheets free their canvas. Total
+  canvas memory stays around one screenful, so opening hundreds of large PDFs works
+  without them turning black. Sheets appear as blank paper and fade in as they render.
+- **Cached zoom** — each sheet's render is cached per zoom level (in a memory-bounded
+  LRU cache), so zooming back to a level you've already viewed is instant instead of
+  re-rendering.
 - **Multi-page support** — flip through a document's pages right on its sheet, or
   **explode** a document into one separate, movable sheet per page (⧉ button).
 - **Multi-select & groups** — hold **Shift** and drag a box around sheets, or
@@ -98,8 +105,13 @@ npm run preview    # serve the built bundle locally
 
 Built with [Vite](https://vitejs.dev/) and [PDF.js](https://mozilla.github.io/pdf.js/).
 A single transformed `#world` layer provides the pan/zoom; each PDF is rendered to its
-own `<canvas>` positioned in world coordinates. Everything runs locally in your
-browser — your PDFs are never uploaded anywhere.
+own `<canvas>` positioned in world coordinates. Rendering is virtualised — a small
+manager renders only the sheets near the viewport (nearest first, a few at a time) at a
+resolution matched to their on-screen size, and frees off-screen canvases — so the
+canvas budget stays bounded no matter how many documents are open. Zoom snaps to
+discrete resolution levels whose rendered bitmaps are kept in a memory-bounded LRU
+cache, so returning to a level is an instant cache hit rather than a re-render.
+Everything runs locally in your browser — your PDFs are never uploaded anywhere.
 
 A saved workspace (`.ittt`) is just a ZIP archive: a `manifest.json` describing the
 layout, groups and drawings, alongside the original PDF files (stored uncompressed,

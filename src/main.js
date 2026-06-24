@@ -6,6 +6,7 @@ import { loadPdf } from "./pdf.js";
 import { DrawController } from "./draw.js";
 import { BACKGROUNDS, paintBackground, positionBackground } from "./backgrounds.js";
 import { SearchController } from "./search.js";
+import { renderCache } from "./rendercache.js";
 
 const WORKSPACE_VERSION = 1;
 const BG_STORAGE_KEY = "itt-background";
@@ -139,9 +140,10 @@ const app = {
     this.selection.delete(paper);
     if (paper.group) this._removeFromGroup(paper);
     paper.destroy();
-    // Drop the source once no sheet uses it anymore.
+    // Drop the source and its cached renders once no sheet uses it anymore.
     if (paper.sourceId && !this.papers.some((p) => p.sourceId === paper.sourceId)) {
       this.sources.delete(paper.sourceId);
+      renderCache.dropPrefix(`${paper.sourceId}|`);
     }
     if (this.papers.length === 0) emptyState.classList.remove("hidden");
     this.refresh();
@@ -408,6 +410,59 @@ const app = {
     viewport.fitBounds(unionBounds(this.papers));
   },
 
+  // ---------- on-demand rendering (virtualisation) ----------
+  // Render only the papers near the viewport, at a resolution matched to their
+  // on-screen size, and free the canvases of off-screen papers. This caps total
+  // canvas memory to ~one screenful so hundreds of PDFs don't exhaust the
+  // browser's canvas budget (which otherwise makes evicted canvases go black).
+  _renderQueue: [],
+  _activeRenders: 0,
+  _renderTimer: null,
+
+  scheduleRender() {
+    clearTimeout(this._renderTimer);
+    this._renderTimer = setTimeout(() => this._renderPass(), 90);
+  },
+
+  _renderPass() {
+    const margin = 500;
+    const queue = [];
+    for (const p of this.papers) {
+      if (p.isVisible(margin)) {
+        if (p.needsRender()) queue.push(p);
+      } else if (p.rendered) {
+        p.free();
+      }
+    }
+    // Render the papers nearest the viewport centre first.
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const dist = (p) => {
+      const r = p.el.getBoundingClientRect();
+      const dx = r.left + r.width / 2 - cx;
+      const dy = r.top + r.height / 2 - cy;
+      return dx * dx + dy * dy;
+    };
+    queue.sort((a, b) => dist(a) - dist(b));
+    this._renderQueue = queue;
+    this._pumpRenders();
+  },
+
+  _pumpRenders() {
+    const MAX = 4; // concurrent renders
+    while (this._activeRenders < MAX && this._renderQueue.length) {
+      const p = this._renderQueue.shift();
+      if (!p.isVisible(500) || !p.needsRender()) continue;
+      this._activeRenders++;
+      p.render()
+        .catch(() => {})
+        .finally(() => {
+          this._activeRenders--;
+          this._pumpRenders();
+        });
+    }
+  },
+
   // ---------- workspace save / load ----------
   /** Bundle the PDFs + layout + drawings into a .ittt (zip) file and download it. */
   saveWorkspace() {
@@ -630,16 +685,12 @@ function unionBounds(list) {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-// ---- viewport reactions: zoom readout, chrome scaling, adaptive detail ----
-let improveTimer = null;
+// ---- viewport reactions: zoom readout, chrome scaling, on-demand render ----
 viewport.onChange((vp) => {
   zoomReadout.textContent = `${Math.round(vp.scale * 100)}%`;
   for (const p of app.papers) p.updateChrome(vp.scale);
   for (const g of app.groups) if (g.chip) g.chip.style.setProperty("--k", 1 / vp.scale);
-  clearTimeout(improveTimer);
-  improveTimer = setTimeout(() => {
-    for (const p of app.papers) p.maybeImprove(vp.scale);
-  }, 160);
+  app.scheduleRender(); // (debounced) render visible papers, free off-screen ones
 });
 
 // ---- toolbar / file wiring ----
@@ -944,20 +995,16 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   switch (e.key) {
-    case "v":
-    case "V":
+    case "1":
       setMode("move");
       break;
-    case "p":
-    case "P":
+    case "2":
       setMode("pen");
       break;
-    case "h":
-    case "H":
+    case "3":
       setMode("highlighter");
       break;
-    case "e":
-    case "E":
+    case "4":
       setMode("eraser");
       break;
     case "f":
@@ -991,3 +1038,4 @@ window.__tabletop = app;
 window.__draw = draw;
 window.__setMode = setMode;
 window.__search = search;
+window.__cache = renderCache;
