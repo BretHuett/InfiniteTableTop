@@ -89,13 +89,16 @@ body.cam-panning .rotate-handle {
   height: 100%;
   border-radius: 2px;
   pointer-events: none;
+  opacity: 0; /* fades in when the page finishes rendering */
+  transition: opacity 0.18s ease;
 }
+/* Only shown for a render error; otherwise the white sheet is the placeholder. */
 .paper .loading {
   position: absolute;
   inset: 0;
-  display: grid;
+  display: none;
   place-items: center;
-  color: #888;
+  color: #b04a4a;
   font-size: 13px;
 }
 

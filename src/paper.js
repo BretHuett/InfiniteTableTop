@@ -1,8 +1,14 @@
 // A single PDF "paper" on the table: a movable, rotatable sheet that renders
 // one page of a PDF and re-renders at higher resolution as you zoom in.
 
+import { renderCache } from "./rendercache.js";
+
 const MAX_RENDER = 5; // cap bitmap pixels-per-CSS-px so canvases stay sane
+const MIN_RENDER = 0.06; // floor so far-zoomed-out thumbnails still have a bitmap
+const BASE_LEVEL = 0.0625; // smallest resolution level (1/16); levels double from here
 const DPR = window.devicePixelRatio || 1;
+
+let _paperUid = 0; // fallback cache id when a sheet has no sourceId
 
 // Hard limits on the backing <canvas> bitmap. Large-format PDFs (e.g. A1/A0
 // engineering drawings) would otherwise demand 100MP+ canvases that GPU-backed
@@ -38,7 +44,9 @@ export class Paper {
     this.baseW = 0;
     this.baseH = 0;
     this.group = null; // Group this sheet belongs to, or null
-    this.renderScale = Math.min(1.5 * DPR, MAX_RENDER);
+    this.rendered = false; // whether the canvas currently holds a bitmap
+    this._displayedLevel = 0; // resolution level currently shown
+    this._cacheId = sourceId || `paper${++_paperUid}`; // cache key namespace
     this._renderTask = null;
     this._page = null;
 
@@ -184,6 +192,36 @@ export class Paper {
     );
   }
 
+  /** Resolution to match the sheet's current on-screen pixel size, clamped. */
+  _targetScale() {
+    const desired = this.viewport.scale * DPR;
+    return Math.max(MIN_RENDER, Math.min(desired, this._maxScale()));
+  }
+
+  /** Snap the target to a discrete level (powers of two) so there's a small,
+   *  cacheable set of resolutions. Rounds up so the bitmap is never upscaled. */
+  _levelFor(target) {
+    const max = this._maxScale();
+    let l = BASE_LEVEL;
+    while (l < target - 1e-6 && l < max) l *= 2;
+    return Math.min(l, max);
+  }
+
+  _cacheKey(level) {
+    return `${this._cacheId}|${this.pageNum}|${level.toFixed(4)}`;
+  }
+
+  /** Draw a finished bitmap/canvas into the visible canvas in one paint. */
+  _blit(src) {
+    if (this.canvas.width !== src.width || this.canvas.height !== src.height) {
+      this.canvas.width = src.width;
+      this.canvas.height = src.height;
+    }
+    this.canvas.getContext("2d", { alpha: false }).drawImage(src, 0, 0);
+    this.canvas.style.opacity = "1";
+    this.loadingEl.style.display = "none";
+  }
+
   _applyPageSize(page) {
     const vp1 = page.getViewport({ scale: 1 });
     this.baseW = Math.round(vp1.width);
@@ -192,14 +230,14 @@ export class Paper {
     this.el.style.height = `${this.baseH}px`;
     this.canvas.style.width = `${this.baseW}px`;
     this.canvas.style.height = `${this.baseH}px`;
-    // Never request more resolution than the canvas can hold.
-    this.renderScale = Math.min(this.renderScale, this._maxScale());
   }
 
+  /** Prepare size + page, but DON'T render — the app renders on demand once the
+   *  sheet is placed and on-screen (so opening 200 PDFs doesn't try to hold 200
+   *  full-resolution canvases at once). */
   async init() {
     this._page = await this.doc.getPage(this.pageNum);
     this._applyPageSize(this._page);
-    await this._render();
   }
 
   async gotoPage(n) {
@@ -212,11 +250,34 @@ export class Paper {
     this._updatePageLabel();
     // Different pages can be different sizes (e.g. landscape inserts).
     this._applyPageSize(this._page);
-    await this._render();
+    this.free();
+    this.app.scheduleRender?.();
   }
 
-  async _render() {
+  /** True if the bitmap is missing or no longer at the current zoom's level. */
+  needsRender() {
+    if (!this._page) return false;
+    if (!this.rendered) return true;
+    return this._levelFor(this._targetScale()) !== this._displayedLevel;
+  }
+
+  /** Show the page at the current level — from cache if we've rendered it
+   *  before, otherwise render it (into an offscreen canvas so the visible
+   *  sheet keeps its current bitmap until the new one is ready) and cache it. */
+  async render() {
     if (!this._page) return;
+    const level = this._levelFor(this._targetScale());
+    if (this.rendered && level === this._displayedLevel) return;
+
+    // Cache hit: instant, no pdf.js work.
+    const cached = renderCache.get(this._cacheKey(level));
+    if (cached) {
+      this._blit(cached);
+      this.rendered = true;
+      this._displayedLevel = level;
+      return;
+    }
+
     if (this._renderTask) {
       try {
         this._renderTask.cancel();
@@ -224,23 +285,26 @@ export class Paper {
       this._renderTask = null;
     }
 
-    // Try the requested scale, then back off if the browser can't allocate /
-    // render the canvas (common with very large pages on some GPUs).
-    let scale = Math.min(this.renderScale, this._maxScale());
+    // Cache miss: render at `level`, backing off if the canvas can't allocate.
+    let scale = level;
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        // Allocating the bitmap can itself throw for very large pages on some
-        // GPUs, so keep it inside the try to drive the back-off below.
         const vp = this._page.getViewport({ scale });
-        this.canvas.width = Math.round(vp.width);
-        this.canvas.height = Math.round(vp.height);
-        const ctx = this.canvas.getContext("2d", { alpha: false });
+        const off = document.createElement("canvas");
+        off.width = Math.round(vp.width);
+        off.height = Math.round(vp.height);
+        const ctx = off.getContext("2d", { alpha: false });
         if (!ctx) throw new Error("Could not allocate canvas context");
         this._renderTask = this._page.render({ canvasContext: ctx, viewport: vp });
         await this._renderTask.promise;
         this._renderTask = null;
-        this.renderScale = scale;
-        this.loadingEl.style.display = "none";
+        this._blit(off); // swap into the visible canvas in one paint
+        this.rendered = true;
+        this._displayedLevel = level;
+        try {
+          const bmp = await createImageBitmap(off);
+          renderCache.set(this._cacheKey(level), bmp, off.width * off.height * 4);
+        } catch {}
         return;
       } catch (err) {
         this._renderTask = null;
@@ -249,28 +313,34 @@ export class Paper {
         scale *= 0.6; // shrink the canvas and try again
       }
     }
-    this.loadingEl.textContent = "Couldn't render this page";
+    this.loadingEl.textContent = "Couldn't render";
+    this.loadingEl.style.display = "grid";
   }
 
-  /** Bump resolution when the user has zoomed in past the current bitmap. */
-  maybeImprove(worldScale) {
-    if (!this._page || !this._isVisible()) return;
-    const cap = this._maxScale();
-    const desired = Math.min(cap, Math.round(worldScale * DPR * 1.1 * 10) / 10);
-    if (desired > this.renderScale + 0.15) {
-      this.renderScale = desired;
-      this._render();
+  /** Release the visible bitmap to free memory; cached levels are kept so
+   *  returning to this sheet is instant. The white sheet shows underneath. */
+  free() {
+    if (this._renderTask) {
+      try {
+        this._renderTask.cancel();
+      } catch {}
+      this._renderTask = null;
     }
+    this.canvas.width = 0;
+    this.canvas.height = 0;
+    this.canvas.style.opacity = "0";
+    this.rendered = false;
+    this._displayedLevel = 0;
   }
 
-  _isVisible() {
+  /** Is the sheet within `margin` px of the viewport? */
+  isVisible(margin = 300) {
     const r = this.el.getBoundingClientRect();
-    const m = 200;
     return (
-      r.right > -m &&
-      r.bottom > -m &&
-      r.left < window.innerWidth + m &&
-      r.top < window.innerHeight + m
+      r.right > -margin &&
+      r.bottom > -margin &&
+      r.left < window.innerWidth + margin &&
+      r.top < window.innerHeight + margin
     );
   }
 
@@ -326,6 +396,7 @@ export class Paper {
       try {
         this.el.releasePointerCapture(e.pointerId);
       } catch {}
+      this.app.scheduleRender?.(); // papers moved → refresh which are rendered
     };
     this.el.addEventListener("pointerup", end);
     this.el.addEventListener("pointercancel", end);
